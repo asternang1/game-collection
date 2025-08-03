@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pixel Disc Golf</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #1a1a2e;
+            color: #fff;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 1rem;
+            margin: 0;
+            user-select: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            max-width: 700px;
+            padding: 1rem;
+            box-sizing: border-box;
+            background-color: #2e2e5c;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+        }
+        .button {
+            transition: all 0.2s ease-in-out;
+            background-color: #3b82f6;
+            color: white;
+            padding: 0.75rem 1.5rem;
+            font-weight: 600;
+            border-radius: 9999px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+            margin: 0.5rem 0;
+        }
+        .button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+            background-color: #60a5fa;
+        }
+        .button:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 20;
+        }
+        .modal-content {
+            background-color: #2e2e5c;
+            padding: 2rem;
+            border-radius: 12px;
+            max-width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+            text-align: center;
+        }
+        .option-button {
+            background-color: #4a4a7a;
+            padding: 0.5rem 1rem;
+            border-radius: 9999px;
+            margin: 0.25rem;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+        .option-button.active {
+            background-color: #3b82f6;
+            transform: scale(1.1);
+        }
+        canvas {
+            border: 2px solid #5d5d81;
+            background-color: #34d399; /* Green for the grass */
+            max-width: 100%;
+            height: auto;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+            image-rendering: pixelated;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white">
+
+<div class="container">
+    <!-- Main Menu Screen -->
+    <div id="mainMenu" class="text-center">
+        <h1 class="text-4xl font-bold my-8">Pixel Disc Golf</h1>
+        <button id="newGameButton" class="button">New Game</button>
+        <br>
+        <button id="optionsButton" class="button">Options</button>
+        <br>
+        <button id="exitButton" class="button">Exit</button>
+    </div>
+
+    <!-- Options Menu Screen -->
+    <div id="optionsMenu" class="modal" style="display: none;">
+        <div class="modal-content">
+            <h2 class="text-2xl font-bold mb-4">Options</h2>
+            <div id="difficultyOptions" class="mb-4">
+                <h3 class="text-lg font-semibold">Difficulty:</h3>
+                <div class="flex justify-center flex-wrap">
+                    <button class="option-button active" data-value="easy">Easy</button>
+                    <button class="option-button" data-value="medium">Medium</button>
+                    <button class="option-button" data-value="hard">Hard</button>
+                </div>
+            </div>
+            <button id="saveOptionsButton" class="button mr-4">Save</button>
+            <button id="closeOptionsButton" class="button">Close</button>
+        </div>
+    </div>
+
+    <!-- Level Selection Screen -->
+    <div id="levelSelect" class="modal" style="display: none;">
+        <div class="modal-content">
+            <h2 class="text-2xl font-bold mb-4">Select a Level</h2>
+            <div id="levelGrid" class="grid grid-cols-4 gap-4">
+                <!-- Levels will be dynamically added here -->
+            </div>
+            <button id="backToMenuButton" class="button mt-6">Main Menu</button>
+        </div>
+    </div>
+
+    <!-- Game Screen -->
+    <div id="gameScreen" style="display: none;">
+        <h2 id="levelTitle" class="text-2xl font-bold mb-4">Level 1</h2>
+        <canvas id="gameCanvas" width="600" height="400"></canvas>
+        <div class="flex space-x-4 mt-4">
+            <div id="gameInfo" class="flex-1 text-left">
+                <p>Par: <span id="parCounter">3</span></p>
+                <p>Throws: <span id="throwCounter">0</span></p>
+                <p>Max Distance: <span id="maxDistanceIndicator">200ft</span></p>
+            </div>
+            <div id="windInfo" class="flex-1 text-right">
+                <p>Wind: <span id="windDirection">N/A</span> @ <span id="windStrength">0</span>mph</p>
+            </div>
+        </div>
+        <div id="discSelector" class="flex justify-center mt-4 space-x-4">
+            <button class="button disc-button active" data-disc="putter">Putter</button>
+            <button class="button disc-button" data-disc="mid-range">Mid-Range</button>
+            <button class="button disc-button" data-disc="fair-way">Fair-way</button>
+            <button class="button disc-button" data-disc="distance-driver">Distance Driver</button>
+        </div>
+        <button id="backToLevelsButton" class="button mt-6">Back to Levels</button>
+    </div>
+
+    <!-- End Level Screen -->
+    <div id="endLevelModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <h2 class="text-2xl font-bold mb-4" id="endLevelMessage"></h2>
+            <p id="endLevelScore"></p>
+            <button id="nextLevelButton" class="button mt-6">Next Level</button>
+            <button id="endGameButton" class="button mt-6">End Game</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const mainMenu = document.getElementById('mainMenu');
+    const optionsMenu = document.getElementById('optionsMenu');
+    const levelSelect = document.getElementById('levelSelect');
+    const gameScreen = document.getElementById('gameScreen');
+    const endLevelModal = document.getElementById('endLevelModal');
+    const newGameButton = document.getElementById('newGameButton');
+    const optionsButton = document.getElementById('optionsButton');
+    const exitButton = document.getElementById('exitButton');
+    const levelGrid = document.getElementById('levelGrid');
+    const backToMenuButton = document.getElementById('backToMenuButton');
+    const backToLevelsButton = document.getElementById('backToLevelsButton');
+    const nextLevelButton = document.getElementById('nextLevelButton');
+    const endGameButton = document.getElementById('endGameButton');
+    const gameCanvas = document.getElementById('gameCanvas');
+    const ctx = gameCanvas.getContext('2d');
+    const discSelector = document.getElementById('discSelector');
+    const discButtons = document.querySelectorAll('.disc-button');
+    const maxDistanceIndicator = document.getElementById('maxDistanceIndicator');
+    const windDirectionIndicator = document.getElementById('windDirection');
+    const windStrengthIndicator = document.getElementById('windStrength');
+    const throwCounterIndicator = document.getElementById('throwCounter');
+
+    const TILE_SIZE = 20;
+    const FEET_PER_TILE = 1;
+
+    let gameState = {
+        player: { x: 0, y: 0, width: TILE_SIZE, height: TILE_SIZE, color: '#ff6b6b' },
+        disc: { x: 0, y: 0, radius: 5, color: '#fde047', vx: 0, vy: 0, isFlying: false, isSinking: false },
+        aimAngle: 0,
+        power: 0,
+        isCharging: false,
+        selectedDisc: 'putter',
+        wind: { speed: 0, direction: '' },
+        course: [],
+        currentLevel: null,
+        gameLoop: null
+    };
+
+    const discProperties = {
+        'putter': { maxDistance: 200 },
+        'mid-range': { maxDistance: 300 },
+        'fair-way': { maxDistance: 350 },
+        'distance-driver': { maxDistance: 600 }
+    };
+    
+    // Wind force vectors (normalized)
+    const windVectors = {
+        'N': { x: 0, y: -1 }, 'NE': { x: 0.707, y: -0.707 }, 'E': { x: 1, y: 0 },
+        'SE': { x: 0.707, y: 0.707 }, 'S': { x: 0, y: 1 }, 'SW': { x: -0.707, y: 0.707 },
+        'W': { x: -1, y: 0 }, 'NW': { x: -0.707, y: -0.707 }
+    };
+
+    const levels = {
+        1: {
+            par: 3,
+            tee: { x: 50, y: 350 },
+            hole: { x: 550, y: 50 },
+            obstacles: [
+                { type: 'water', x: 250, y: 150, width: 100, height: 100 },
+                { type: 'tree', x: 400, y: 200, radius: 10 }
+            ]
+        }
+    };
+
+    // --- Game Logic ---
+    function initGame(level) {
+        // Use the selected level, or default to 1 if it doesn't exist
+        gameState.currentLevel = levels[level] || levels[1];
+        gameState.player.x = gameState.currentLevel.tee.x;
+        gameState.player.y = gameState.currentLevel.tee.y;
+        gameState.disc.x = gameState.player.x;
+        gameState.disc.y = gameState.player.y;
+        gameState.disc.isSinking = false; // Reset sinking state
+        gameState.aimAngle = 0; // Initial aim is straight up
+        
+        document.getElementById('levelTitle').textContent = `Level ${level}`;
+        document.getElementById('parCounter').textContent = gameState.currentLevel.par;
+        throwCounterIndicator.textContent = 0;
+
+        discButtons.forEach(btn => btn.classList.remove('active'));
+        discButtons[0].classList.add('active');
+        gameState.selectedDisc = 'putter';
+        
+        // Generate wind only once per level
+        generateWind();
+        updateDiscInfo();
+
+        if (gameState.gameLoop) {
+            cancelAnimationFrame(gameState.gameLoop);
+        }
+        gameState.gameLoop = requestAnimationFrame(gameUpdate);
+    }
+
+    function gameUpdate() {
+        if (gameState.disc.isSinking) {
+            // Animation for sinking into the basket
+            gameState.disc.y += 2; // Sinking speed
+            if (gameState.disc.y >= gameState.currentLevel.hole.y + TILE_SIZE / 2) {
+                endLevel();
+                return;
+            }
+        } else if (gameState.disc.isFlying) {
+            // Check for immediate hole collision (simulating hitting the basket)
+            const holeCollisionRadius = TILE_SIZE; // A more forgiving radius
+            if (checkHoleCollision(gameState.disc.x, gameState.disc.y, holeCollisionRadius)) {
+                gameState.disc.isFlying = false;
+                gameState.disc.vx = 0;
+                gameState.disc.vy = 0;
+                gameState.disc.isSinking = true;
+                return;
+            }
+
+            // Apply physics to the disc
+            // Air resistance
+            gameState.disc.vx *= 0.98;
+            gameState.disc.vy *= 0.98;
+            
+            // Wind force, scaled down to be more subtle
+            const WIND_SCALE = 0.002; 
+            const windVector = windVectors[gameState.wind.direction];
+            if (windVector) {
+                gameState.disc.vx += windVector.x * (gameState.wind.speed * WIND_SCALE);
+                gameState.disc.vy += windVector.y * (gameState.wind.speed * WIND_SCALE);
+            }
+
+            gameState.disc.x += gameState.disc.vx;
+            gameState.disc.y += gameState.disc.vy;
+
+            // Check if disc has stopped
+            if (Math.abs(gameState.disc.vx) < 0.5 && Math.abs(gameState.disc.vy) < 0.5) {
+                gameState.disc.isFlying = false;
+
+                // Check for collision with hole after stopping
+                if (checkHoleCollision(gameState.disc.x, gameState.disc.y, TILE_SIZE / 2)) {
+                    gameState.disc.isSinking = true;
+                    return;
+                }
+                
+                gameState.player.x = gameState.disc.x;
+                gameState.player.y = gameState.disc.y;
+            }
+            // Check if disc flies off-screen
+            if (gameState.disc.x < 0 || gameState.disc.x > gameCanvas.width ||
+                gameState.disc.y < 0 || gameState.disc.y > gameCanvas.height) {
+                
+                gameState.disc.isFlying = false;
+                // Move player to the last valid on-screen position of the disc
+                gameState.player.x = Math.max(0, Math.min(gameCanvas.width - TILE_SIZE, gameState.disc.x));
+                gameState.player.y = Math.max(0, Math.min(gameCanvas.height - TILE_SIZE, gameState.disc.y));
+            }
+        } else if (gameState.isCharging) {
+            // Update charging power, capped by disc's max distance
+            const maxPower = discProperties[gameState.selectedDisc].maxDistance / FEET_PER_TILE;
+            gameState.power = Math.min(maxPower, gameState.power + 2);
+        }
+
+        draw();
+        gameState.gameLoop = requestAnimationFrame(gameUpdate);
+    }
+
+    // New collision function with a configurable radius for the basket effect
+    function checkHoleCollision(discX, discY, radius) {
+        const hole = gameState.currentLevel.hole;
+        const dist = Math.sqrt(Math.pow(discX - hole.x, 2) + Math.pow(discY - hole.y, 2));
+        return dist < radius;
+    }
+
+    function endLevel() {
+        if (gameState.gameLoop) {
+            cancelAnimationFrame(gameState.gameLoop);
+        }
+        
+        const throws = parseInt(throwCounterIndicator.textContent);
+        document.getElementById('endLevelMessage').textContent = "You finished the level!";
+        document.getElementById('endLevelScore').textContent = `Your score: ${throws} throws`;
+        endLevelModal.style.display = 'flex';
+    }
+
+    function draw() {
+        ctx.clearRect(0, 0, gameCanvas.width, gameCanvas.height);
+        
+        ctx.fillStyle = '#44bd32';
+        ctx.fillRect(0, 0, gameCanvas.width, gameCanvas.height);
+
+        drawObstacles();
+        drawTeeAndHole();
+
+        if (gameState.disc.isFlying || gameState.disc.isSinking) {
+            drawDisc();
+        } else {
+            drawPlayer();
+            drawAimArrow();
+            if (gameState.isCharging) {
+                drawPowerBar();
+            }
+        }
+    }
+
+    function drawPlayer() {
+        ctx.fillStyle = gameState.player.color;
+        ctx.fillRect(gameState.player.x, gameState.player.y, gameState.player.width, gameState.player.height);
+    }
+
+    function drawDisc() {
+        ctx.fillStyle = gameState.disc.color;
+        ctx.beginPath();
+        ctx.arc(gameState.disc.x + TILE_SIZE / 2, gameState.disc.y + TILE_SIZE / 2, gameState.disc.radius, 0, 2 * Math.PI);
+        ctx.fill();
+    }
+
+    function drawTeeAndHole() {
+        ctx.fillStyle = '#a0a0a0';
+        ctx.fillRect(gameState.currentLevel.tee.x - TILE_SIZE, gameState.currentLevel.tee.y - TILE_SIZE, TILE_SIZE * 2, TILE_SIZE * 2);
+
+        ctx.fillStyle = '#4a4a7a'; // Dark gray color for the basket
+        ctx.beginPath();
+        ctx.arc(gameState.currentLevel.hole.x, gameState.currentLevel.hole.y, TILE_SIZE / 2, 0, 2 * Math.PI);
+        ctx.fill();
+    }
+
+    function drawObstacles() {
+        gameState.currentLevel.obstacles.forEach(obstacle => {
+            if (obstacle.type === 'water') {
+                ctx.fillStyle = '#3498db';
+                ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+            }
+        });
+    }
+
+    function drawAimArrow() {
+        if (!gameState.isCharging) {
+            const arrowLength = 50;
+            const arrowX = gameState.player.x + TILE_SIZE / 2;
+            const arrowY = gameState.player.y + TILE_SIZE / 2;
+            const endX = arrowX + arrowLength * Math.cos(gameState.aimAngle);
+            const endY = arrowY + arrowLength * Math.sin(gameState.aimAngle);
+
+            ctx.save();
+            ctx.strokeStyle = '#fde047';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(arrowX, arrowY);
+            ctx.lineTo(endX, endY);
+            ctx.stroke();
+
+            // Draw arrowhead
+            ctx.fillStyle = '#fde047';
+            ctx.beginPath();
+            ctx.translate(endX, endY);
+            ctx.rotate(gameState.aimAngle + Math.PI / 2);
+            ctx.moveTo(0, 0);
+            ctx.lineTo(-5, 10);
+            ctx.lineTo(5, 10);
+            ctx.closePath();
+            ctx.fill();
+            ctx.restore();
+        }
+    }
+
+    function drawPowerBar() {
+        const maxPower = discProperties[gameState.selectedDisc].maxDistance / FEET_PER_TILE;
+        const barWidth = 100;
+        const barHeight = 10;
+        const barX = gameState.player.x - barWidth / 2 + TILE_SIZE / 2;
+        const barY = gameState.player.y + TILE_SIZE + 5;
+        const powerPercentage = gameState.power / maxPower;
+
+        ctx.fillStyle = '#a0a0a0';
+        ctx.fillRect(barX, barY, barWidth, barHeight);
+
+        ctx.fillStyle = '#ef4444';
+        ctx.fillRect(barX, barY, barWidth * powerPercentage, barHeight);
+    }
+    
+    function generateWind() {
+        const windDirections = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+        const randomDirection = windDirections[Math.floor(Math.random() * windDirections.length)];
+        const randomSpeed = Math.floor(Math.random() * 21);
+        
+        gameState.wind.direction = randomDirection;
+        gameState.wind.speed = randomSpeed;
+
+        windDirectionIndicator.textContent = gameState.wind.direction;
+        windStrengthIndicator.textContent = gameState.wind.speed;
+    }
+
+    function updateDiscInfo() {
+        const maxDist = discProperties[gameState.selectedDisc].maxDistance;
+        maxDistanceIndicator.textContent = `${maxDist}ft`;
+    }
+
+    function handleThrow() {
+        if (gameState.isCharging) {
+            const throwPower = gameState.power;
+            
+            const VELOCITY_SCALE = 0.05;
+            const initialVelocity = throwPower * VELOCITY_SCALE;
+            
+            gameState.disc.vx = initialVelocity * Math.cos(gameState.aimAngle);
+            gameState.disc.vy = initialVelocity * Math.sin(gameState.aimAngle);
+            
+            gameState.disc.isFlying = true;
+            gameState.isCharging = false;
+            
+            throwCounterIndicator.textContent = parseInt(throwCounterIndicator.textContent) + 1;
+        }
+    }
+
+    // --- Input Handlers ---
+    function handleKeyDown(event) {
+        if (gameScreen.style.display !== 'block' || gameState.disc.isFlying || gameState.disc.isSinking) return;
+
+        if (event.code === 'ArrowLeft') {
+            gameState.aimAngle -= 0.1;
+        } else if (event.code === 'ArrowRight') {
+            gameState.aimAngle += 0.1;
+        } else if (event.code === 'Space' && !gameState.isCharging) {
+            gameState.isCharging = true;
+            gameState.power = 0;
+        }
+    }
+
+    function handleKeyUp(event) {
+        if (gameScreen.style.display !== 'block' || gameState.disc.isFlying || gameState.disc.isSinking) return;
+
+        if (event.code === 'Space' && gameState.isCharging) {
+            handleThrow();
+        }
+    }
+
+    // --- Screen Management ---
+    function showScreen(screenId) {
+        mainMenu.style.display = 'none';
+        optionsMenu.style.display = 'none';
+        levelSelect.style.display = 'none';
+        gameScreen.style.display = 'none';
+        endLevelModal.style.display = 'none';
+        
+        if (gameState.gameLoop) {
+            cancelAnimationFrame(gameState.gameLoop);
+        }
+
+        if (screenId === 'mainMenu') {
+            mainMenu.style.display = 'block';
+        } else if (screenId === 'optionsMenu') {
+            optionsMenu.style.display = 'flex';
+        } else if (screenId === 'levelSelect') {
+            levelSelect.style.display = 'flex';
+        } else if (screenId === 'gameScreen') {
+            gameScreen.style.display = 'block';
+        }
+    }
+
+    // --- Main Menu Buttons ---
+    newGameButton.addEventListener('click', () => {
+        showScreen('levelSelect');
+        generateLevelButtons();
+    });
+    optionsButton.addEventListener('click', () => {
+        showScreen('optionsMenu');
+    });
+    exitButton.addEventListener('click', () => {
+        window.location.href = '../index.html';
+    });
+
+    // --- Options Menu Buttons ---
+    document.getElementById('saveOptionsButton').addEventListener('click', () => {
+        // TODO: Add save logic for options
+        showScreen('mainMenu');
+    });
+    document.getElementById('closeOptionsButton').addEventListener('click', () => {
+        showScreen('mainMenu');
+    });
+    document.querySelectorAll('#difficultyOptions .option-button').forEach(button => {
+        button.addEventListener('click', (event) => {
+            document.querySelectorAll('#difficultyOptions .option-button').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+        });
+    });
+
+    // --- Level Selection Buttons ---
+    function generateLevelButtons() {
+        levelGrid.innerHTML = '';
+        for (let i = 1; i <= 18; i++) {
+            const levelButton = document.createElement('button');
+            levelButton.textContent = `Level ${i}`;
+            levelButton.className = 'button';
+            levelButton.addEventListener('click', () => {
+                showScreen('gameScreen');
+                initGame(i);
+            });
+            levelGrid.appendChild(levelButton);
+        }
+    }
+    backToMenuButton.addEventListener('click', () => {
+        showScreen('mainMenu');
+    });
+    
+    // --- Game Screen Buttons ---
+    backToLevelsButton.addEventListener('click', () => {
+        showScreen('levelSelect');
+    });
+
+    // --- End Level Buttons ---
+    nextLevelButton.addEventListener('click', () => {
+        // TODO: Go to the next level
+        showScreen('levelSelect');
+    });
+    endGameButton.addEventListener('click', () => {
+        showScreen('mainMenu');
+    });
+    
+    // --- Disc Selection ---
+    discButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            discButtons.forEach(btn => btn.classList.remove('active'));
+            button.classList.add('active');
+            gameState.selectedDisc = button.dataset.disc;
+            updateDiscInfo();
+        });
+    });
+
+    // --- Initialize ---
+    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('keyup', handleKeyUp);
+    showScreen('mainMenu');
+
+</script>
+
+</body>
+</html>
