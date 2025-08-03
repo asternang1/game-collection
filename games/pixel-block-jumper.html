@@ -1,0 +1,882 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pixel Block Jumper</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #1a1a2e;
+            color: #fff;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 1rem;
+            margin: 0;
+            user-select: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+        }
+        canvas {
+            border: 2px solid #5d5d81;
+            background-color: #0f0f1a;
+            max-width: 100%;
+            height: auto;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+            image-rendering: pixelated; /* Essential for pixel art! */
+            image-rendering: -moz-crisp-edges;
+            image-rendering: -webkit-crisp-edges;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            max-width: 700px;
+            padding: 1rem;
+            box-sizing: border-box;
+        }
+        .message-box {
+            background-color: #2e2e5c;
+            padding: 1rem;
+            border-radius: 12px;
+            margin-bottom: 1rem;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+            display: none;
+            font-size: 1.25rem;
+            font-weight: bold;
+        }
+        .button {
+            transition: all 0.2s ease-in-out;
+            background-color: #3b82f6; /* Blue 500 */
+            color: white;
+            padding: 0.75rem 1.5rem;
+            font-weight: 600;
+            border-radius: 9999px; /* Full rounded */
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+        }
+        .button:hover {
+            transform: translateY(-2px);
+            box-shadow: 6px 6px 12px rgba(0, 0, 0, 0.3);
+            background-color: #60a5fa; /* Blue 400 */
+        }
+        .button:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+        .game-stats {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            background-color: #2e2e5c;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: bold;
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+            z-index: 10;
+        }
+        .options-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            display: none; /* Hidden by default */
+            justify-content: center;
+            align-items: center;
+            z-index: 20;
+        }
+        .options-content {
+            background-color: #2e2e5c;
+            padding: 2rem;
+            border-radius: 12px;
+            max-width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+            text-align: center;
+        }
+        .option-group {
+            margin-bottom: 1rem;
+        }
+        .option-button {
+            background-color: #4a4a7a;
+            padding: 0.5rem 1rem;
+            border-radius: 9999px;
+            margin: 0.25rem;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+        .option-button.active {
+            background-color: #3b82f6;
+            transform: scale(1.1);
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white">
+
+<div class="container">
+    <h1 class="text-3xl font-bold my-4">Pixel Block Jumper</h1>
+    <p class="text-center text-sm md:text-base mb-4">Jump over the flames, collect light blue blocks to grow, and land on a **green block** for a temporary speed boost! Beware of **lightning strikes** from clouds that will make you fall faster! Look out for sticky **yellow blocks** that will slow you down. Try jumping on floating **purple blocks** to ride on a higher level!</p>
+
+    <div id="highScores" class="my-4 text-center">
+        <h2 class="text-xl font-semibold mb-2">High Scores</h2>
+        <p>Blocks: <span id="highScoreBlocks">0</span></p>
+        <p>Distance: <span id="highScoreDistance">0</span>m</p>
+    </div>
+
+    <div id="message-box" class="message-box"></div>
+    
+    <canvas id="gameCanvas"></canvas>
+
+    <div class="flex space-x-4 mt-6">
+        <button id="startButton" class="button">Start Game</button>
+        <button id="restartButton" class="button" style="display: none;">Restart</button>
+        <button id="optionsButton" class="button">Options</button>
+    </div>
+
+    <div class="flex mt-6 md:hidden">
+        <button id="jumpButton" class="button">Jump</button>
+    </div>
+</div>
+
+<div id="gameStats" class="game-stats" style="display: none;">
+    <div id="blockCounter">Blocks: 1</div>
+    <div id="distanceCounter">Distance: 0m</div>
+</div>
+
+<div id="optionsModal" class="options-modal">
+    <div class="options-content">
+        <h2 class="text-2xl font-bold mb-4">Game Options</h2>
+
+        <!-- Speed Setting -->
+        <div id="speedOptions" class="option-group">
+            <h3 class="text-lg font-semibold">Player Speed:</h3>
+            <div class="flex justify-center flex-wrap">
+                <button class="option-button" data-value="slow">Slow</button>
+                <button class="option-button active" data-value="normal">Normal</button>
+                <button class="option-button" data-value="fast">Fast</button>
+            </div>
+        </div>
+
+        <!-- Lightning Frequency -->
+        <div id="lightningOptions" class="option-group">
+            <h3 class="text-lg font-semibold">Lightning Frequency:</h3>
+            <div class="flex justify-center flex-wrap">
+                <button class="option-button" data-value="few">Few</button>
+                <button class="option-button active" data-value="normal">Normal</button>
+                <button class="option-button" data-value="more">More</button>
+                <button class="option-button" data-value="many">Many</button>
+            </div>
+        </div>
+
+        <!-- Collectible Frequency -->
+        <div id="collectiblesOptions" class="option-group">
+            <h3 class="text-lg font-semibold">Light Blue Blocks Frequency:</h3>
+            <div class="flex justify-center flex-wrap">
+                <button class="option-button" data-value="few">Few</button>
+                <button class="option-button active" data-value="normal">Normal</button>
+                <button class="option-button" data-value="more">More</button>
+                <button class="option-button" data-value="many">Many</button>
+            </div>
+        </div>
+
+        <!-- Sticky Block Frequency -->
+        <div id="stickyOptions" class="option-group">
+            <h3 class="text-lg font-semibold">Yellow Blocks Frequency:</h3>
+            <div class="flex justify-center flex-wrap">
+                <button class="option-button" data-value="few">Few</button>
+                <button class="option-button active" data-value="normal">Normal</button>
+                <button class="option-button" data-value="more">More</button>
+                <button class="option-button" data-value="many">Many</button>
+            </div>
+        </div>
+
+        <!-- Platform Frequency -->
+        <div id="platformsOptions" class="option-group">
+            <h3 class="text-lg font-semibold">Purple Platforms Frequency:</h3>
+            <div class="flex justify-center flex-wrap">
+                <button class="option-button" data-value="few">Few</button>
+                <button class="option-button active" data-value="normal">Normal</button>
+                <button class="option-button" data-value="more">More</button>
+                <button class="option-button" data-value="many">Many</button>
+            </div>
+        </div>
+
+        <!-- Flame Frequency -->
+        <div id="flamesOptions" class="option-group">
+            <h3 class="text-lg font-semibold">Red Flames Frequency:</h3>
+            <div class="flex justify-center flex-wrap">
+                <button class="option-button" data-value="few">Few</button>
+                <button class="option-button active" data-value="normal">Normal</button>
+                <button class="option-button" data-value="more">More</button>
+                <button class="option-button" data-value="many">Many</button>
+            </div>
+        </div>
+
+        <button id="saveOptionsButton" class="button mt-6 mr-4">Save</button>
+        <button id="closeOptionsButton" class="button mt-6">Close</button>
+    </div>
+</div>
+
+<script>
+    // Constants for the game
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const startButton = document.getElementById('startButton');
+    const restartButton = document.getElementById('restartButton');
+    const optionsButton = document.getElementById('optionsButton');
+    const jumpButton = document.getElementById('jumpButton');
+    const optionsModal = document.getElementById('optionsModal');
+    const saveOptionsButton = document.getElementById('saveOptionsButton');
+    const closeOptionsButton = document.getElementById('closeOptionsButton');
+    const messageBox = document.getElementById('message-box');
+    const gameStatsDiv = document.getElementById('gameStats');
+    const blockCounterDiv = document.getElementById('blockCounter');
+    const distanceCounterDiv = document.getElementById('distanceCounter');
+    const highScoresDiv = document.getElementById('highScores');
+    const highScoreBlocksDiv = document.getElementById('highScoreBlocks');
+    const highScoreDistanceDiv = document.getElementById('highScoreDistance');
+
+    const blockSize = 16;
+    const baseGravity = 0.5;
+    const jumpPower = -10;
+    const doubleJumpPower = -8;
+    
+    // Base speed and sticky speed
+    const basePlayerSpeed = 3;
+    const stickySpeed = 1;
+
+    // Game state variables
+    let playerSpeed = basePlayerSpeed;
+    let currentGravity = baseGravity;
+    const lightningForce = 15;
+
+    let player = {};
+    let blocks = [];
+    let flames = [];
+    let clouds = [];
+    let lightningStrikes = [];
+    let gameLoop;
+    let isGameOver = false;
+    let isGameRunning = false;
+    let isGameEnding = false;
+    let slowDownFrames = 0;
+    let cameraX = 0;
+    let initialPlayerX = 0;
+    let finalDistance = 0;
+    let finalBlocks = 0;
+    let highScoreBlocks = 0;
+    let highScoreDistance = 0;
+
+    const worldWidth = 5000;
+    const worldHeight = canvas.height;
+    
+    const speedBoostDuration = 15;
+
+    // Game settings for options menu
+    let gameSettings = {
+        speed: 'normal',
+        lightning: 'normal',
+        collectibles: 'normal',
+        sticky: 'normal',
+        platforms: 'normal',
+        flames: 'normal'
+    };
+
+    /**
+     * Maps a frequency string to a numerical probability.
+     * @param {string} frequency - The frequency string (e.g., 'few', 'normal').
+     * @returns {number} The probability value.
+     */
+    function getFrequencyProbability(frequency) {
+        switch (frequency) {
+            case 'few': return 0.1;
+            case 'normal': return 0.3;
+            case 'more': return 0.5;
+            case 'many': return 0.7;
+            default: return 0.3;
+        }
+    }
+
+    /**
+     * Maps a speed string to a numerical speed value.
+     * @param {string} speed - The speed string (e.g., 'slow', 'normal', 'fast').
+     * @returns {number} The speed value.
+     */
+    function getPlayerSpeedValue(speed) {
+        switch (speed) {
+            case 'slow': return basePlayerSpeed * 0.75;
+            case 'normal': return basePlayerSpeed;
+            case 'fast': return basePlayerSpeed * 1.5;
+            default: return basePlayerSpeed;
+        }
+    }
+
+    /**
+     * Creates the initial game level with platforms, blocks, and flames based on settings.
+     */
+    function createLevel() {
+        blocks = [];
+        flames = [];
+        clouds = [];
+        lightningStrikes = [];
+        const floorHeight = canvas.height - blockSize * 2;
+        
+        for (let i = 0; i < worldWidth / blockSize; i++) {
+            blocks.push({ x: i * blockSize, y: floorHeight, type: 'platform' });
+        }
+
+        const lightningProb = getFrequencyProbability(gameSettings.lightning) * 0.01;
+        const collectibleProb = getFrequencyProbability(gameSettings.collectibles);
+        const stickyProb = getFrequencyProbability(gameSettings.sticky);
+        const platformProb = getFrequencyProbability(gameSettings.platforms);
+        const flameProb = getFrequencyProbability(gameSettings.flames) * 0.4;
+        
+        let consecutiveFlames = 0;
+        for (let i = 0; i < 20; i++) {
+            const platformX = 300 + Math.random() * (worldWidth - 600);
+            const platformY = floorHeight - blockSize * 2;
+            blocks.push({ x: platformX, y: platformY, type: 'platform' });
+
+            const blockX = platformX + blockSize * 2;
+            const blockY = floorHeight - blockSize * 4 - Math.random() * 100;
+            
+            const randomBlockType = Math.random();
+            if (randomBlockType < collectibleProb) {
+                blocks.push({ x: blockX, y: blockY, type: 'collectible' });
+            } else if (randomBlockType < stickyProb) {
+                 blocks.push({ x: blockX, y: blockY, type: 'sticky' });
+            } else {
+                blocks.push({ x: blockX, y: blockY, type: 'collectible' });
+            }
+            
+            if (consecutiveFlames < 3 && Math.random() < flameProb) {
+                const flameX = platformX + blockSize * 5;
+                for(let j = 0; j < 3; j++) {
+                    flames.push({ 
+                        x: flameX + j * blockSize, 
+                        y: floorHeight - blockSize, 
+                        width: blockSize, 
+                        height: blockSize 
+                    });
+                }
+                consecutiveFlames++;
+            } else {
+                consecutiveFlames = 0;
+            }
+        }
+        
+        for (let i = 0; i < 5; i++) {
+            if (Math.random() < platformProb) {
+                const platformX = Math.random() * (worldWidth - 200) + 100;
+                const platformY = floorHeight - blockSize * 6 - Math.random() * 150;
+                const numBlocks = Math.floor(Math.random() * 4) + 1;
+                for (let j = 0; j < numBlocks; j++) {
+                    blocks.push({ x: platformX + j * blockSize, y: platformY, type: 'platform' });
+                }
+            }
+        }
+
+        for (let i = 0; i < 5; i++) {
+            const cloudX = Math.random() * worldWidth;
+            const cloudY = Math.random() * (canvas.height / 3);
+            clouds.push({ x: cloudX, y: cloudY, width: blockSize * 5, height: blockSize * 2, lightningProb: lightningProb });
+        }
+
+        blocks.push({ x: worldWidth - 100, y: floorHeight - blockSize * 2, type: 'platform' });
+        blocks.push({ x: worldWidth - 100 + blockSize, y: floorHeight - blockSize * 2, type: 'platform' });
+    }
+
+    function initializePlayer() {
+        player = {
+            x: 50,
+            y: canvas.height - blockSize * 3,
+            vx: 0,
+            vy: 0,
+            blocks: [{ x: 0, y: 0 }],
+            onGround: false,
+            canDoubleJump: false,
+            boostStartDistance: 0,
+            isBoostActive: false,
+        };
+        initialPlayerX = player.x;
+        playerSpeed = getPlayerSpeedValue(gameSettings.speed);
+        currentGravity = baseGravity;
+    }
+
+    function startGame() {
+        if (isGameRunning) return;
+        isGameRunning = true;
+        isGameOver = false;
+        isGameEnding = false;
+        cameraX = 0;
+        initializePlayer();
+        createLevel();
+
+        messageBox.style.display = 'none';
+        startButton.style.display = 'none';
+        restartButton.style.display = 'block';
+        optionsButton.style.display = 'none';
+        highScoresDiv.style.display = 'none';
+        gameStatsDiv.style.display = 'flex';
+        updateGameStats();
+
+        if (gameLoop) {
+            cancelAnimationFrame(gameLoop);
+        }
+        gameLoop = requestAnimationFrame(gameUpdate);
+    }
+
+    function resetGame() {
+        isGameRunning = false;
+        startButton.style.display = 'block';
+        restartButton.style.display = 'none';
+        optionsButton.style.display = 'block';
+        messageBox.style.display = 'none';
+        gameStatsDiv.style.display = 'none';
+        highScoresDiv.style.display = 'block';
+        loadHighScores(); // Load and display high scores
+        
+        if (gameLoop) {
+            cancelAnimationFrame(gameLoop);
+        }
+        
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        drawText("Press 'Start' to Play", canvas.width / 2, canvas.height / 2);
+    }
+
+    function gameUpdate(timestamp) {
+        if (isGameOver) {
+            return;
+        }
+        
+        if (isGameEnding) {
+            player.x += playerSpeed * 0.2;
+            player.y += player.vy;
+            player.vy += currentGravity * 0.2;
+            
+            if (player.y > canvas.height) {
+                endGame("Game Over", false);
+            }
+            draw();
+            gameLoop = requestAnimationFrame(gameUpdate);
+            return;
+        }
+
+        update();
+        draw();
+        
+        gameLoop = requestAnimationFrame(gameUpdate);
+    }
+
+    function update() {
+        if (player.isBoostActive && (player.x - player.boostStartDistance) / blockSize >= speedBoostDuration) {
+            playerSpeed = getPlayerSpeedValue(gameSettings.speed);
+            player.isBoostActive = false;
+        }
+
+        if (Math.random() < getFrequencyProbability(gameSettings.lightning) * 0.01) {
+            const cloud = clouds[Math.floor(Math.random() * clouds.length)];
+            const lightningX = cloud.x + Math.random() * cloud.width;
+            const lightningY = cloud.y + cloud.height;
+            lightningStrikes.push({
+                x: lightningX,
+                y: lightningY,
+                width: blockSize,
+                height: canvas.height - lightningY,
+                duration: 5
+            });
+        }
+        
+        for (let i = lightningStrikes.length - 1; i >= 0; i--) {
+            lightningStrikes[i].duration--;
+            if (lightningStrikes[i].duration <= 0) {
+                lightningStrikes.splice(i, 1);
+            }
+        }
+        
+        currentGravity = baseGravity;
+
+        player.vy += currentGravity;
+        player.y += player.vy;
+        
+        let onStickyBlock = false;
+        for (const block of blocks) {
+            if (block.type === 'sticky' &&
+                player.y + player.blocks[0].y + blockSize === block.y &&
+                player.x + player.blocks[0].x + blockSize > block.x &&
+                player.x + player.blocks[0].x < block.x + blockSize) {
+                onStickyBlock = true;
+                break;
+            }
+        }
+        player.x += onStickyBlock ? stickySpeed : playerSpeed;
+
+        const previousOnGround = player.onGround;
+        player.onGround = false;
+        for (const block of blocks) {
+            if (player.y + player.blocks[0].y + blockSize > block.y &&
+                player.y + player.blocks[0].y + blockSize < block.y + blockSize &&
+                player.x + player.blocks[0].x + blockSize > block.x &&
+                player.x + player.blocks[0].x < block.x + blockSize) {
+                
+                player.onGround = true;
+                player.vy = 0;
+                player.y = block.y - blockSize;
+                break;
+            }
+        }
+        if (!previousOnGround && player.onGround) {
+            player.canDoubleJump = true;
+        }
+
+        checkCollisions();
+        
+        cameraX = player.x - canvas.width / 2;
+        if (cameraX < 0) cameraX = 0;
+        if (cameraX > worldWidth - canvas.width) cameraX = worldWidth - canvas.width;
+        
+        updateGameStats();
+        
+        if (player.x >= worldWidth - 150) {
+            endGame("You Win!", true);
+        }
+        
+        if (player.y > canvas.height && !isGameEnding) {
+            isGameRunning = false;
+            isGameEnding = true;
+            finalDistance = Math.round((player.x - initialPlayerX) / blockSize);
+            finalBlocks = player.blocks.length;
+        }
+    }
+
+    function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        drawBackground();
+        
+        ctx.save();
+        ctx.translate(-cameraX, 0);
+
+        drawLevel();
+        drawPlayer();
+        
+        ctx.restore();
+    }
+
+    function updateGameStats() {
+        if (!isGameEnding) {
+            const distanceCovered = Math.round((player.x - initialPlayerX) / blockSize);
+            const blocksCollected = player.blocks.length;
+            
+            blockCounterDiv.textContent = `Blocks: ${blocksCollected}`;
+            distanceCounterDiv.textContent = `Distance: ${distanceCovered}m`;
+        }
+    }
+
+    function drawBackground() {
+        ctx.fillStyle = '#0f0f1a';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        for (let i = 0; i < 50; i++) {
+            ctx.fillStyle = `rgba(255, 255, 255, ${Math.random()})`;
+            ctx.fillRect(Math.random() * canvas.width, Math.random() * canvas.height, 1, 1);
+        }
+    }
+
+    function drawPlayer() {
+        player.blocks.forEach(block => {
+            ctx.fillStyle = '#ff6b6b';
+            if (block !== player.blocks[0]) {
+                ctx.fillStyle = '#87ceeb';
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 1;
+            }
+            ctx.fillRect(player.x + block.x, player.y + block.y, blockSize, blockSize);
+            if (block !== player.blocks[0]) {
+                ctx.strokeRect(player.x + block.x, player.y + block.y, blockSize, blockSize);
+            }
+        });
+    }
+
+    function drawLevel() {
+        blocks.forEach(block => {
+            if (block.type === 'platform') {
+                ctx.fillStyle = '#8e2de2';
+                ctx.fillRect(block.x, block.y, blockSize, blockSize);
+            } else if (block.type === 'collectible') {
+                ctx.fillStyle = '#87ceeb';
+                ctx.fillRect(block.x, block.y, blockSize, blockSize);
+            } else if (block.type === 'speed_boost') {
+                ctx.fillStyle = '#44bd32';
+                ctx.fillRect(block.x, block.y, blockSize, blockSize);
+            } else if (block.type === 'sticky') {
+                ctx.fillStyle = '#fceb03';
+                ctx.fillRect(block.x, block.y, blockSize, blockSize);
+            }
+        });
+
+        flames.forEach(flame => {
+            ctx.fillStyle = '#ff0000';
+            ctx.fillRect(flame.x, flame.y, flame.width, flame.height);
+            ctx.fillStyle = '#ff9900';
+            ctx.fillRect(flame.x, flame.y + flame.height / 3, flame.width, flame.height / 3 * 2);
+            ctx.fillStyle = '#ffff00';
+            ctx.fillRect(flame.x, flame.y + flame.height / 3 * 2, flame.width, flame.height / 3);
+        });
+
+        clouds.forEach(cloud => {
+            ctx.fillStyle = '#e0e0e0';
+            ctx.beginPath();
+            ctx.arc(cloud.x, cloud.y, blockSize, Math.PI, 2 * Math.PI);
+            ctx.arc(cloud.x + blockSize, cloud.y, blockSize * 0.8, Math.PI, 2 * Math.PI);
+            ctx.arc(cloud.x + blockSize * 2, cloud.y, blockSize, Math.PI, 2 * Math.PI);
+            ctx.rect(cloud.x, cloud.y, blockSize * 2, blockSize * 0.8);
+            ctx.fill();
+        });
+
+        lightningStrikes.forEach(lightning => {
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.moveTo(lightning.x, lightning.y);
+            ctx.lineTo(lightning.x + blockSize * 0.5, lightning.y + lightning.height * 0.3);
+            ctx.lineTo(lightning.x - blockSize * 0.5, lightning.y + lightning.height * 0.4);
+            ctx.lineTo(lightning.x, lightning.y + lightning.height);
+            ctx.fill();
+        });
+        
+        ctx.fillStyle = '#44bd32';
+        ctx.fillRect(worldWidth - 50, 0, 10, canvas.height);
+        drawText("FINISH", worldWidth - 50, canvas.height / 2, 'white', '20px');
+    }
+    
+    function drawText(text, x, y, color = 'white', size = '16px') {
+        ctx.save();
+        ctx.translate(cameraX, 0);
+        ctx.fillStyle = color;
+        ctx.font = `${size} 'Press Start 2P', cursive`;
+        ctx.textAlign = 'center';
+        ctx.fillText(text, x, y);
+        ctx.restore();
+    }
+
+    function checkCollisions() {
+        const playerMainBlock = { x: player.x, y: player.y, width: blockSize, height: blockSize };
+        
+        for (let i = flames.length - 1; i >= 0; i--) {
+            const flame = flames[i];
+            if (playerMainBlock.x < flame.x + flame.width &&
+                playerMainBlock.x + playerMainBlock.width > flame.x &&
+                playerMainBlock.y < flame.y + flame.height &&
+                playerMainBlock.y + playerMainBlock.height > flame.y) {
+                
+                if (player.blocks.length > 1) {
+                    player.blocks.pop();
+                    flames.splice(i, 1);
+                } else {
+                    isGameRunning = false;
+                    isGameEnding = true;
+                    finalDistance = Math.round((player.x - initialPlayerX) / blockSize);
+                    finalBlocks = player.blocks.length;
+                    
+                    return;
+                }
+            }
+        }
+
+        for (let i = blocks.length - 1; i >= 0; i--) {
+            const block = blocks[i];
+            const playerMainBlock = { x: player.x, y: player.y, width: blockSize, height: blockSize };
+
+            if (playerMainBlock.x < block.x + blockSize &&
+                playerMainBlock.x + playerMainBlock.width > block.x &&
+                playerMainBlock.y < block.y + blockSize &&
+                playerMainBlock.y + playerMainBlock.height > block.y) {
+                
+                if (block.type === 'collectible') {
+                    player.blocks.push({ x: (player.blocks.length) * blockSize, y: 0 });
+                    blocks.splice(i, 1);
+                    player.blocks.forEach((b, index) => {
+                        b.x = index * blockSize;
+                    });
+                } else if (block.type === 'speed_boost') {
+                    playerSpeed = getPlayerSpeedValue(gameSettings.speed) * 1.25;
+                    player.isBoostActive = true;
+                    player.boostStartDistance = player.x;
+                    blocks.splice(i, 1);
+                }
+            }
+        }
+
+        for (let i = lightningStrikes.length - 1; i >= 0; i--) {
+            const lightning = lightningStrikes[i];
+            if (player.x < lightning.x + lightning.width &&
+                player.x + playerMainBlock.width > lightning.x &&
+                player.y < lightning.y + lightning.height &&
+                player.y + playerMainBlock.height > lightning.y) {
+                
+                if (player.blocks.length > 1) {
+                    player.blocks.pop();
+                } 
+                player.vy += lightningForce;
+                lightningStrikes.splice(i, 1);
+            }
+        }
+    }
+
+    function updateHighScores(currentBlocks, currentDistance) {
+        if (currentBlocks > highScoreBlocks) {
+            highScoreBlocks = currentBlocks;
+            localStorage.setItem('highScoreBlocks', highScoreBlocks);
+        }
+        if (currentDistance > highScoreDistance) {
+            highScoreDistance = currentDistance;
+            localStorage.setItem('highScoreDistance', highScoreDistance);
+        }
+        highScoreBlocksDiv.textContent = highScoreBlocks;
+        highScoreDistanceDiv.textContent = highScoreDistance;
+    }
+
+    function loadHighScores() {
+        highScoreBlocks = parseInt(localStorage.getItem('highScoreBlocks')) || 0;
+        highScoreDistance = parseInt(localStorage.getItem('highScoreDistance')) || 0;
+        highScoreBlocksDiv.textContent = highScoreBlocks;
+        highScoreDistanceDiv.textContent = highScoreDistance;
+    }
+
+    function endGame(message, win) {
+        isGameOver = true;
+        isGameRunning = false;
+        isGameEnding = false;
+
+        const distanceCovered = win ? Math.round((player.x - initialPlayerX) / blockSize) : finalDistance;
+        const blocksCollected = win ? player.blocks.length : finalBlocks;
+        
+        updateHighScores(blocksCollected, distanceCovered);
+
+        messageBox.innerHTML = `
+            ${message}<br><br>
+            Distance: ${distanceCovered} meters<br>
+            Cubes Collected: ${blocksCollected}<br><br>
+            <button id="mainMenuButton" class="button">Main Menu</button>
+        `;
+        messageBox.style.display = 'block';
+
+        if (win) {
+            messageBox.style.backgroundColor = '#44bd32';
+        } else {
+            messageBox.style.backgroundColor = '#ff6b6b';
+        }
+
+        if (gameLoop) {
+            cancelAnimationFrame(gameLoop);
+        }
+
+        const mainMenuButton = document.getElementById('mainMenuButton');
+        if (mainMenuButton) {
+            mainMenuButton.addEventListener('click', resetGame);
+        }
+    }
+
+    function handleKeyDown(event) {
+        if (isGameRunning && (event.code === 'Space' || event.code === 'ArrowUp')) {
+            jump();
+        }
+    }
+
+    function jump() {
+        if (player.onGround) {
+            player.vy = jumpPower;
+            player.onGround = false;
+            player.canDoubleJump = true;
+        } else if (player.canDoubleJump) {
+            player.vy = doubleJumpPower;
+            player.canDoubleJump = false;
+        }
+    }
+    
+    function resizeCanvas() {
+        canvas.width = window.innerWidth > 700 ? 700 : window.innerWidth * 0.9;
+        canvas.height = canvas.width * 0.6;
+        
+        if (!isGameRunning && !isGameEnding) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#fff';
+            ctx.font = "24px 'Inter'";
+            ctx.textAlign = 'center';
+            ctx.fillText("Press 'Start' to Play", canvas.width / 2, canvas.height / 2);
+        }
+    }
+
+    function handleOptionClick(event) {
+        const optionGroup = event.target.closest('.option-group');
+        if (!optionGroup) return;
+
+        const groupButtons = optionGroup.querySelectorAll('.option-button');
+        groupButtons.forEach(btn => btn.classList.remove('active'));
+        event.target.classList.add('active');
+    }
+
+    function saveOptions() {
+        document.querySelectorAll('.option-group').forEach(group => {
+            const id = group.id.replace('Options', '');
+            const activeValue = group.querySelector('.option-button.active').dataset.value;
+            gameSettings[id] = activeValue;
+        });
+        
+        optionsModal.style.display = 'none';
+    }
+
+    function closeOptions() {
+        optionsModal.style.display = 'none';
+    }
+
+    window.addEventListener('load', () => {
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+        startButton.addEventListener('click', startGame);
+        restartButton.addEventListener('click', startGame);
+        optionsButton.addEventListener('click', () => {
+            optionsModal.style.display = 'flex';
+        });
+        saveOptionsButton.addEventListener('click', saveOptions);
+        closeOptionsButton.addEventListener('click', closeOptions);
+        document.addEventListener('keydown', handleKeyDown);
+
+        const allOptionButtons = document.querySelectorAll('.option-button');
+        allOptionButtons.forEach(btn => btn.addEventListener('click', handleOptionClick));
+        
+        const handleJumpAction = (e) => {
+            e.preventDefault();
+            if (!isGameEnding) {
+                jump();
+            }
+        };
+
+        canvas.addEventListener('click', handleJumpAction);
+        jumpButton.addEventListener('click', handleJumpAction);
+        jumpButton.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            if (!isGameEnding) {
+                jump();
+            }
+        });
+
+        loadHighScores();
+    });
+
+</script>
+
+</body>
+</html>
