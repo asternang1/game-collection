@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Game Collection</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #1a1a2e;
+            color: #fff;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        .container {
+            width: 100%;
+            max-width: 900px;
+            padding: 2rem;
+            text-align: center;
+        }
+        .game-grid {
+            display: grid;
+            gap: 1.5rem;
+            grid-template-columns: repeat(1, minmax(0, 1fr));
+            margin-top: 2rem;
+        }
+        @media (min-width: 640px) {
+            .game-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+        @media (min-width: 1024px) {
+            .game-grid {
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+            }
+        }
+        .game-card {
+            background-color: #2e2e5c;
+            border-radius: 12px;
+            padding: 1.5rem;
+            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+            cursor: pointer;
+            text-decoration: none;
+            color: inherit;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        .game-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.4);
+        }
+        .game-title {
+            font-size: 1.25rem;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="text-4xl font-bold">My Game Collection</h1>
+        <p class="mt-4 text-gray-300">A collection of pixel art games made with HTML and JavaScript.</p>
+
+        <div class="game-grid">
+            <!-- Game Card 1: Pixel Block Jumper -->
+            <a href="games/pixel-block-jumper.html" class="game-card">
+                <h2 class="game-title">Pixel Block Jumper</h2>
+                <p class="text-sm text-gray-400">A side-scrolling pixel art platformer.</p>
+            </a>
+            
+            <!-- Game Card 2: Placeholder for a new game -->
+            <div class="game-card opacity-50 cursor-not-allowed">
+                <h2 class="game-title">Future Game</h2>
+                <p class="text-sm text-gray-400">Coming soon!</p>
+            </div>
+
+            <!-- Game Card 3: Another placeholder -->
+            <div class="game-card opacity-50 cursor-not-allowed">
+                <h2 class="game-title">Next Adventure</h2>
+                <p class="text-sm text-gray-400">Coming soon!</p>
+            </div>
+
+        </div>
+    </div>
+</body>
+</html>
