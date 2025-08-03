@@ -61,6 +61,14 @@
             margin-bottom: 0.5rem;
         }
     </style>
+    <script>
+        // Redirect to the correct file name if a specific path is requested
+        window.onload = function() {
+            if (window.location.pathname.endsWith('/MainPage')) {
+                window.location.href = window.location.origin + window.location.pathname.replace('/MainPage', '/index.html');
+            }
+        };
+    </script>
 </head>
 <body>
     <div class="container">
